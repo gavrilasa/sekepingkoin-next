@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ModeToggle } from "../ui/mode-toggle";
+import { ModeToggle } from "./ui/mode-toggle";
 
 export default function Navbar() {
 	return (

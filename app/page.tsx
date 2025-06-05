@@ -3,7 +3,8 @@ import { Metadata } from "next";
 import { ConverterCard } from "@/components/converter/converter-card";
 import { getCryptoCurrencies, getFiatCurrencies } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
-import Navbar from "@/components/converter/navbar";
+import Navbar from "@/components/navbar";
+import Footer from "@/components/footer";
 
 export const metadata: Metadata = {
 	title: "SekepingKoin Next",
@@ -20,15 +21,12 @@ export default async function Home() {
 	return (
 		<main className="min-h-screen bg-gradient-to-b from-background to-muted/30">
 			<Navbar />
-			<div className="container mx-auto px-4 pt-24 md:pt-36">
-				<div className="max-w-4xl mx-auto mb-4 text-center">
-					<h1 className="text-3xl md:text-5xl font-bold mb-4">
-						Crypto Coin Conversion
-					</h1>
-					<p className="text-muted-foreground text-md mt-2">
-						Free from sign-up, limits, complications with real-time
-						<br />
-						exchange rates
+			<div className="container mx-auto px-4 pt-28 md:pt-36">
+				<div className="max-w-4xl mx-auto mb-4 text-center flex flex-col justify-center items-center gap-3 md:gap-4">
+					<h1 className="text-5xl font-bold">Crypto Coin Conversion</h1>
+					<p className="text-muted-foreground text-sm md:text-base text-center w-5/6 md:w-1/2">
+						Free from sign-up, limits, complications with real-time exchange
+						rates
 					</p>
 				</div>
 
@@ -38,11 +36,9 @@ export default async function Home() {
 						fiatCurrencies={fiatCurrencies}
 					/>
 				</Suspense>
-
-				<div className="mt-4 pt-6 border-t border-border/40 text-center text-sm text-muted-foreground">
-					<p>Data provided by CoinMarketCap. Rates are updated in real-time.</p>
-				</div>
 			</div>
+
+			<Footer />
 		</main>
 	);
 }
