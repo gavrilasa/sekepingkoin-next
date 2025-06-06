@@ -89,7 +89,7 @@ export function ConverterCard({
 	};
 
 	return (
-		<Card className="w-full max-w-xl mx-auto shadow-lg border-0 bg-gradient-to-br from-card to-card/90">
+		<Card className="w-full max-w-xl mx-auto shadow-lg border-0 bg-gradient-to-br from-card to-card/90 z-10">
 			{/* <CardHeader className="pb-3">
         <CardTitle className="text-2xl font-bold text-center">Crypto-Fiat Converter</CardTitle>
       </CardHeader> */}
