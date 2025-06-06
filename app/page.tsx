@@ -10,7 +10,7 @@ import Supported from "@/components/supported";
 import Image from "next/image";
 
 export const metadata: Metadata = {
-	title: "SekepingKoin Next",
+	title: "SekepingKoin",
 	description:
 		"Convert between cryptocurrencies and fiat currencies in real-time",
 };
