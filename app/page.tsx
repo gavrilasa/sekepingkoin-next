@@ -5,6 +5,8 @@ import { getCryptoCurrencies, getFiatCurrencies } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
+import Benefits from "@/components/benefits";
+import Supported from "@/components/supported";
 
 export const metadata: Metadata = {
 	title: "SekepingKoin Next",
@@ -21,7 +23,7 @@ export default async function Home() {
 	return (
 		<main className="min-h-screen bg-gradient-to-b from-background to-muted/30">
 			<Navbar />
-			<div className="container mx-auto px-4 pt-28 md:pt-36">
+			<div className="container mx-auto px-4 pt-28 md:pt-36 min-h-screen">
 				<div className="max-w-4xl mx-auto mb-4 text-center flex flex-col justify-center items-center gap-3 md:gap-4">
 					<h1 className="text-5xl font-bold">Crypto Coin Conversion</h1>
 					<p className="text-muted-foreground text-sm md:text-base text-center w-5/6 md:w-1/2">
@@ -37,6 +39,10 @@ export default async function Home() {
 					/>
 				</Suspense>
 			</div>
+
+			<Benefits />
+
+			<Supported />
 
 			<Footer />
 		</main>
