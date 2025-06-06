@@ -1,45 +1,60 @@
-// File: lib/api.ts
-
 import { CryptoCurrency, FiatCurrency, ConversionResult } from "@/types";
 
-const getBaseUrl = (): string => {
-	if (typeof window !== "undefined") {
-		return "";
+// Utility to detect server-side
+const isServer = typeof window === "undefined";
+
+// CoinMarketCap API base URL
+const COINMARKETCAP_API_URL = "https://pro-api.coinmarketcap.com/v1";
+
+// User-Agent fallback
+const USER_AGENT =
+	"Mozilla/5.0 (compatible; MyCryptoApp/1.0; +https://example.com)";
+
+// Helper function to perform fetch with consistent error handling
+async function safeFetch<T>(url: string, options: RequestInit): Promise<T> {
+	const response = await fetch(url, options);
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({
+			error: `Non-JSON error response: ${response.statusText}`,
+		}));
+		console.error(
+			`[safeFetch] API call failed. URL: ${url}, Status: ${response.status}, Response:`,
+			errorData
+		);
+		throw new Error(
+			`API request failed: ${response.status} - ${
+				errorData.error || response.statusText
+			}`
+		);
 	}
-	if (process.env.NEXT_PUBLIC_APP_URL) {
-		return process.env.NEXT_PUBLIC_APP_URL;
-	}
-	return `http://localhost:${process.env.PORT || 3001}`;
-};
+
+	const data = await response.json();
+	return data;
+}
 
 export async function getCryptoCurrencies(): Promise<CryptoCurrency[]> {
 	const functionName = "getCryptoCurrencies";
-	const baseUrl = getBaseUrl();
-	const apiUrl = `${baseUrl}/api/coinmarketcap/listings`;
+
+	const apiUrl = isServer
+		? `${COINMARKETCAP_API_URL}/cryptocurrency/listings/latest`
+		: "/api/coinmarketcap/listings";
+
+	const fetchOptions: RequestInit = {
+		method: "GET",
+		headers: {
+			Accept: "application/json",
+			...(isServer && {
+				"X-CMC_PRO_API_KEY": process.env.COINMARKETCAP_API_KEY || "",
+				"User-Agent": USER_AGENT,
+			}),
+		},
+		...(isServer ? {} : { next: { revalidate: 300 } }),
+	};
 
 	try {
-		// console.log(`[${functionName}] Attempting to fetch from: "${apiUrl}"`);
-		const response = await fetch(apiUrl, {
-			method: "GET",
-			headers: { Accept: "application/json" },
-			next: { revalidate: 300 }, // Revalidate every 5 minutes
-		});
+		const data = await safeFetch<any>(apiUrl, fetchOptions);
 
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({
-				error: `Non-JSON error response: ${response.statusText}`,
-			}));
-			console.error(
-				`[${functionName}] API call failed. URL: ${apiUrl}, Status: ${response.status}, Response:`,
-				errorData
-			);
-			throw new Error(
-				`Failed to fetch crypto listings: ${response.status} - ${
-					errorData.error || response.statusText
-				}`
-			);
-		}
-		const data = await response.json();
 		if (!data.data) {
 			console.error(
 				`[${functionName}] API response missing 'data' field. URL: ${apiUrl}, Response:`,
@@ -47,50 +62,42 @@ export async function getCryptoCurrencies(): Promise<CryptoCurrency[]> {
 			);
 			throw new Error("Invalid API response structure from listings endpoint.");
 		}
+
 		return data.data.map((crypto: any) => ({
 			id: crypto.id,
 			symbol: crypto.symbol,
 			name: crypto.name,
-			price: crypto.quote.USD?.price || 0, // Fallback if USD quote is missing
-			percentChange24h: crypto.quote.USD?.percent_change_24h || 0, // Fallback
+			price: crypto.quote.USD?.price || 0,
+			percentChange24h: crypto.quote.USD?.percent_change_24h || 0,
 		}));
 	} catch (error) {
-		console.error(
-			`[${functionName}] CATCH BLOCK Error fetching from "${apiUrl}":`,
-			error
-		);
-		throw error; // Re-throw the error to be handled by the caller
+		console.error(`[${functionName}] Error:`, error);
+		throw error;
 	}
 }
 
 export async function getFiatCurrencies(): Promise<FiatCurrency[]> {
 	const functionName = "getFiatCurrencies";
-	const baseUrl = getBaseUrl();
-	const apiUrl = `${baseUrl}/api/coinmarketcap/fiat-map`;
+
+	const apiUrl = isServer
+		? `${COINMARKETCAP_API_URL}/fiat/map`
+		: "/api/coinmarketcap/fiat-map";
+
+	const fetchOptions: RequestInit = {
+		method: "GET",
+		headers: {
+			Accept: "application/json",
+			...(isServer && {
+				"X-CMC_PRO_API_KEY": process.env.COINMARKETCAP_API_KEY || "",
+				"User-Agent": USER_AGENT,
+			}),
+		},
+		...(isServer ? {} : { next: { revalidate: 86400 } }),
+	};
 
 	try {
-		// console.log(`[${functionName}] Attempting to fetch from: "${apiUrl}"`);
-		const response = await fetch(apiUrl, {
-			method: "GET",
-			headers: { Accept: "application/json" },
-			next: { revalidate: 86400 }, // Revalidate once a day
-		});
+		const data = await safeFetch<any>(apiUrl, fetchOptions);
 
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({
-				error: `Non-JSON error response: ${response.statusText}`,
-			}));
-			console.error(
-				`[${functionName}] API call failed. URL: ${apiUrl}, Status: ${response.status}, Response:`,
-				errorData
-			);
-			throw new Error(
-				`Failed to fetch fiat map: ${response.status} - ${
-					errorData.error || response.statusText
-				}`
-			);
-		}
-		const data = await response.json();
 		if (!data.data) {
 			console.error(
 				`[${functionName}] API response missing 'data' field. URL: ${apiUrl}, Response:`,
@@ -98,16 +105,14 @@ export async function getFiatCurrencies(): Promise<FiatCurrency[]> {
 			);
 			throw new Error("Invalid API response structure from fiat-map endpoint.");
 		}
+
 		return data.data.map((fiat: any) => ({
 			id: fiat.symbol,
 			symbol: fiat.sign || fiat.symbol,
 			name: fiat.name,
 		}));
 	} catch (error) {
-		console.error(
-			`[${functionName}] CATCH BLOCK Error fetching from "${apiUrl}":`,
-			error
-		);
+		console.error(`[${functionName}] Error:`, error);
 		throw error;
 	}
 }
@@ -118,36 +123,26 @@ export async function convertCurrency(
 	toCurrencySymbol: string
 ): Promise<ConversionResult> {
 	const functionName = "convertCurrency";
-	const baseUrl = getBaseUrl();
-	const params = new URLSearchParams({
-		amount: amount.toString(),
-		symbol: fromCurrencySymbol,
-		convert: toCurrencySymbol,
-	});
-	const apiUrl = `${baseUrl}/api/coinmarketcap/convert?${params.toString()}`;
+
+	const apiUrl = isServer
+		? `${COINMARKETCAP_API_URL}/tools/price-conversion?amount=${amount}&symbol=${fromCurrencySymbol}&convert=${toCurrencySymbol}`
+		: `/api/coinmarketcap/convert?amount=${amount}&symbol=${fromCurrencySymbol}&convert=${toCurrencySymbol}`;
+
+	const fetchOptions: RequestInit = {
+		method: "GET",
+		headers: {
+			Accept: "application/json",
+			...(isServer && {
+				"X-CMC_PRO_API_KEY": process.env.COINMARKETCAP_API_KEY || "",
+				"User-Agent": USER_AGENT,
+			}),
+		},
+		...(isServer ? {} : { cache: "no-store" }),
+	};
 
 	try {
-		// console.log(`[${functionName}] Attempting to fetch from: "${apiUrl}"`);
-		const response = await fetch(apiUrl, {
-			method: "GET",
-			headers: { Accept: "application/json" },
-			cache: "no-store", // Conversions should not be cached heavily
-		});
+		const apiResponse = await safeFetch<any>(apiUrl, fetchOptions);
 
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({
-				error: `Non-JSON error response: ${response.statusText}`,
-			}));
-			console.error(
-				`[${functionName}] API call failed. URL: ${apiUrl}, Status: ${response.status}, Response:`,
-				errorData
-			);
-			throw new Error(
-				errorData.error || `Conversion API request failed: ${response.status}`
-			);
-		}
-
-		const apiResponse = await response.json();
 		if (
 			!apiResponse.data ||
 			!apiResponse.data.quote ||
@@ -161,18 +156,17 @@ export async function convertCurrency(
 				`Target currency '${toCurrencySymbol}' or essential data not found in API response.`
 			);
 		}
+
 		const quote = apiResponse.data.quote[toCurrencySymbol];
 
 		const resultPrice = quote.price;
 		const actualRate = amount === 0 ? 0 : resultPrice / amount;
 
-		// Attempt to find more complete details if available, otherwise use symbols
-		// This part might need enhancement if you fetch full currency lists elsewhere and can look them up
 		const fromDetails: CryptoCurrency | FiatCurrency = {
 			id: apiResponse.data.id?.toString() || fromCurrencySymbol,
 			symbol: fromCurrencySymbol,
 			name: apiResponse.data.name || fromCurrencySymbol,
-			...(apiResponse.data.id && apiResponse.data.quote[fromCurrencySymbol] // If from is crypto and has quote
+			...(apiResponse.data.id && apiResponse.data.quote[fromCurrencySymbol]
 				? {
 						price: apiResponse.data.quote[fromCurrencySymbol].price,
 						percentChange24h:
@@ -180,11 +174,12 @@ export async function convertCurrency(
 				  }
 				: {}),
 		};
+
 		const toDetails: CryptoCurrency | FiatCurrency = {
-			id: toCurrencySymbol, // Assuming target fiat ID is its symbol
+			id: toCurrencySymbol,
 			symbol: toCurrencySymbol,
-			name: toCurrencySymbol, // Placeholder name
-			...(quote.price !== undefined // If target is crypto and has quote
+			name: toCurrencySymbol,
+			...(quote.price !== undefined
 				? { price: quote.price, percentChange24h: quote.percent_change_24h }
 				: {}),
 		};
@@ -198,10 +193,7 @@ export async function convertCurrency(
 			timestamp: apiResponse.data.last_updated || new Date().toISOString(),
 		};
 	} catch (error) {
-		console.error(
-			`[${functionName}] CATCH BLOCK Error processing from "${apiUrl}":`,
-			error
-		);
+		console.error(`[${functionName}] Error:`, error);
 		throw error;
 	}
 }
